@@ -37,24 +37,15 @@ def __splitTagType(tag):
     tagType = s[1]
   return tag, tagType
 
-def computeF1Score(correct_slots, pred_slots):
+def compute_f1_score(correct_slots, pred_slots):
   '''
-
   Args:
     correct_slots: [[],[],[]]
     pred_slots: [[],[],[]]
-
-  Returns:
-
   '''
-  # correctChunk = {}
   correctChunkCnt = 0
-  # foundCorrect = {}
   foundCorrectCnt = 0
-  # foundPred = {}
   foundPredCnt = 0
-  # correctTags = 0
-  # tokenCount = 0
   for correct_slot, pred_slot in zip(correct_slots, pred_slots):
     correct = False
     lastCorrectTag = 'O'  # o not 0
@@ -62,72 +53,50 @@ def computeF1Score(correct_slots, pred_slots):
     lastPredTag = 'O'
     lastPredType = ''
 
-    lastCorrectChunkCnt = correctChunkCnt
     for c, p in zip(correct_slot, pred_slot):
       correctTag, correctType = __splitTagType(c)
       predTag, predType = __splitTagType(p)
 
       if correct == True:  # until we can be sure it is correct,it's incorrect
-        if __endOfChunk(lastCorrectTag, correctTag, lastCorrectType,
-                        correctType) == True and __endOfChunk(lastPredTag,
-                                                              predTag,
-                                                              lastPredType,
-                                                              predType) == True \
-            and (lastCorrectType == lastPredType):
+        if __endOfChunk(
+          lastCorrectTag, correctTag, lastCorrectType, correctType
+          ) == True and __endOfChunk(
+          lastPredTag, predTag, lastPredType, predType
+          ) == True and (lastCorrectType == lastPredType):
           # we can finally say it's correct and correctChunkCnt += 1
           correctChunkCnt += 1
           correct = False # for next iteration
-          # if lastCorrectType in correctChunk:
-          #     correctChunk[lastCorrectType] += 1
-          # else:
-          #     correctChunk[lastCorrectType] = 1
-        elif __endOfChunk(lastCorrectTag, correctTag, lastCorrectType,
-                          correctType) != __endOfChunk(lastPredTag,
-                                                       predTag,
-                                                       lastPredType,
-                                                       predType) or (
-            correctType != predType):
+
+        elif __endOfChunk(
+          lastCorrectTag, correctTag, lastCorrectType, correctType
+          ) != __endOfChunk(
+          lastPredTag, predTag, lastPredType, predType) or (
+          correctType != predType):
           correct = False
 
-      if __startOfChunk(lastCorrectTag, correctTag, lastCorrectType,
-                        correctType) == True and __startOfChunk(
-        lastPredTag, predTag, lastPredType,
-          predType) == True and (
-          correctType == predType):
+      if __startOfChunk(
+        lastCorrectTag, correctTag, lastCorrectType, correctType
+        ) == True and __startOfChunk(
+        lastPredTag, predTag, lastPredType, predType
+        ) == True and (
+        correctType == predType):
         correct = True
 
-      if __startOfChunk(lastCorrectTag, correctTag, lastCorrectType,
-                        correctType) == True:
+      if __startOfChunk(
+          lastCorrectTag, correctTag, lastCorrectType, correctType
+         ) == True:
         foundCorrectCnt += 1
-        # if correctType in foundCorrect:
-        #     foundCorrect[correctType] += 1
-        # else:
-        #     foundCorrect[correctType] = 1
 
-      if __startOfChunk(lastPredTag, predTag, lastPredType, predType) == True:
+      if __startOfChunk(lastPredTag, predTag, lastPredType, predType):
         foundPredCnt += 1
-        # if predType in foundPred:
-        #     foundPred[predType] += 1
-        # else:
-        #     foundPred[predType] = 1
 
-      # if correctTag == predTag and correctType == predType:
-      #     correctTags += 1
-      # tokenCount += 1
       lastCorrectTag = correctTag
       lastCorrectType = correctType
       lastPredTag = predTag
       lastPredType = predType
 
     if correct == True:
-      # last one will not go back to the 'correct == True' in iteration,
-      # we have to complete the calculation outside
       correctChunkCnt += 1
-      # if lastCorrectType in correctChunk:
-      #     correctChunk[lastCorrectType] += 1
-      # else:
-      #     correctChunk[lastCorrectType] = 1
-
     else:
       pass
 
@@ -147,26 +116,6 @@ def computeF1Score(correct_slots, pred_slots):
 
   return f1, precision, recall
 
-
-def judge_intent(pred, gold):
-  if '#' not in pred and '#' not in gold:
-    return gold == pred
-  elif '#' in gold and '#' in pred:
-    return gold == pred
-  else:
-    if '#' in pred and '#' not in gold:
-      pred = pred.split('#')
-      if gold == pred[0] or gold == pred[1]:
-        return True
-      else:
-        return False
-    elif '#' in gold and '#' not in pred:
-      gold = gold.split('#')
-      if pred == gold[0] or pred == gold[1]:
-        return True
-      else:
-        return False
-
 def get_sent_acc(truth_file, pred_file):
   n_total = 0
   n_correct = 0
@@ -183,5 +132,6 @@ def get_sent_acc(truth_file, pred_file):
     intent_acc = (intent_correct/n_total)*100
   except:
     acc = 0
-    intent_acc=0
-  return intent_acc,acc
+    intent_acc = 0
+
+  return intent_acc, acc

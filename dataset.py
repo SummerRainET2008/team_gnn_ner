@@ -3,11 +3,8 @@
 import numpy as np
 import torch
 import torch.utils.data
-import Constants
+import constants
 from allennlp.modules.elmo import batch_to_ids
-
-torch.manual_seed(1)
-torch.cuda.manual_seed(1)
 
 def paired_collate_fn(insts):
   '''
@@ -20,7 +17,6 @@ def paired_collate_fn(insts):
   src_char = collate_fn(src_char_insts, is_char=True)
   tgt_seq = collate_fn(tgt_insts)
   return (src_seq, src_char, tgt_seq)
-
 
 def collate_fn(insts, is_char=False):
   '''
@@ -36,7 +32,7 @@ def collate_fn(insts, is_char=False):
   else:
     max_len = max(len(inst) for inst in insts)
     batch_seq = np.array([
-      inst + [Constants.PAD] * (max_len - len(inst)) for inst in insts
+      inst + [constants.PAD] * (max_len - len(inst)) for inst in insts
     ])
     batch_seq = torch.LongTensor(batch_seq)
   return batch_seq

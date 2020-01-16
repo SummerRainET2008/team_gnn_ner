@@ -1,12 +1,12 @@
 #coding: utf8
 
-import Constants
+import constants
 
 def get_len(tensor):
   '''
   :param tensor:(b,l)
   :return: (b)
   '''
-  mask = tensor.ne(Constants.PAD)  # (b,l)
+  mask = tensor.ne(constants.PAD)  # (b,l)
   return mask.sum(dim=-1)
 

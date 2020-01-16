@@ -6,7 +6,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-import Constants
+import constants
 from utils import get_len
 from allennlp.modules.elmo import Elmo
 from \
@@ -14,7 +14,7 @@ from \
   import \
   StackedSelfAttentionEncoder
 
-os.environ["CUDA_VISIBLE_DEVICES"] = Constants.GPU
+os.environ["CUDA_VISIBLE_DEVICES"] = constants.GPU
 
 class penalized_tanh(torch.nn.Module):
   def __init__(self):
@@ -269,7 +269,7 @@ class sLSTM(nn.Module):
     self.embeddings = nn.Embedding(n_src_vocab, d_word)
     self.n_tgt_vocab = n_tgt_vocab
     self.n_intent = n_intent
-    self.elmo = Elmo(Constants.ELMO_OPTIONS, Constants.ELMO_WEIGHT, 1,
+    self.elmo = Elmo(constants.ELMO_OPTIONS, constants.ELMO_WEIGHT, 1,
                      requires_grad=False, dropout=dropout)
     self.slot_out = nn.Linear(d_hidden, n_tgt_vocab)
     self.intent_out = nn.Linear(d_hidden, n_intent)
@@ -326,7 +326,7 @@ class sLSTM(nn.Module):
 
     '''
 
-    mask = src_seq.gt(Constants.PAD)
+    mask = src_seq.gt(constants.PAD)
     # src_len = torch.cuda.LongTensor(
     #     np.array(get_len(src_seq.cpu().transpose(0, 1)))).unsqueeze(1)
     src_len = torch.LongTensor(

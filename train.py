@@ -1,10 +1,7 @@
 #coding: utf8
 
 import os
-import Constants
-
-os.environ["CUDA_VISIBLE_DEVICES"] = Constants.GPU
-
+import constants
 import argparse
 import math
 import time
@@ -18,33 +15,19 @@ from tqdm import tqdm
 import logging
 import random
 from dataset import Dataset, paired_collate_fn
-from models.SLSTM import sLSTM
-from evaluate import computeF1Score, get_sent_acc
-
-from utils import get_len
+from models.slstm import sLSTM
+from evaluate import compute_f1_score, get_sent_acc
 import sys
-
-logging.disable(sys.maxsize)  # Python 3
-
-np.random.seed(Constants.SEED)
-torch.manual_seed(Constants.SEED)
-torch.cuda.manual_seed(Constants.SEED)
-random.seed(Constants.SEED)
-torch.backends.cudnn.deterministic = True
 
 def cal_correct(pred, gold):
   '''
-
   Args:
     pred: pred_logits (b,emb)
-    gold:
-
   Returns: number of correct predictions
-
   '''
   pred = pred.max(1)[1]
   gold = gold.contiguous().view(-1)
-  non_pad_mask = gold.ne(Constants.PAD) # not equal
+  non_pad_mask = gold.ne(constants.PAD) # not equal
   n_correct = pred.eq(gold) # equal
   n_correct = n_correct.masked_select(non_pad_mask).sum().item()
   return n_correct
@@ -61,18 +44,14 @@ def train_epoch(model, training_data, optimizer, device):
   intent_correct = 0
 
   for batch in tqdm(
-      training_data, mininterval=2, desc='  - (Training)   ', leave=False):
+      training_data, mininterval=2, desc='  - (Training)   ', leave=False
+  ):
     src_seq, src_char, tgt_seq = map(lambda x: x.to(device), batch)
     # src_seq, tgt_seq: [batch_size, max_len]
     # src_char: [batch_size, max_len, 50]
     slot_gold = tgt_seq[:, 1:].transpose(0, 1).contiguous().view(-1)
     intent_gold = tgt_seq[:, 0].view(-1)
-    # tensor([79, 78, 77, 82, 76, 78, 80, 78, 81, 81, 80, 76, 82, 79, 81, 81,
-    #         76, 78, 77, 78, 81, 80, 82, 77, 76, 82, 79, 78, 77, 77, 78, 81])
-    intent_gold[intent_gold != Constants.UNK] -= Constants.TAGS
-    # tensor([3, 2, 1, 6, 0, 2, 4, 2, 5, 5, 4, 0, 6, 3, 5, 5, 0, 2, 1, 2, 5, 4,
-    #         6, 1, 0, 6, 3, 2, 1, 1, 2, 5])
-
+    intent_gold[intent_gold != constants.UNK] -= constants.TAGS
 
     # first element in every sentence is intent
     src_seq = src_seq[:, 1:]
@@ -80,8 +59,9 @@ def train_epoch(model, training_data, optimizer, device):
 
     optimizer.zero_grad()
     slot_logit, intent_logit = model(src_seq.transpose(0, 1), src_char, )# [B*C]
-    slot_loss = F.cross_entropy(slot_logit, slot_gold,
-                                ignore_index=Constants.PAD, reduction='sum')
+    slot_loss = F.cross_entropy(
+      slot_logit, slot_gold, ignore_index=constants.PAD, reduction='sum'
+    )
     intent_loss = F.cross_entropy(intent_logit, intent_gold, reduction='sum')
 
     batch_loss = slot_loss + intent_loss
@@ -96,7 +76,7 @@ def train_epoch(model, training_data, optimizer, device):
     total_loss += batch_loss.item()
     slot_correct += batch_slot_correct
     intent_correct += batch_intent_correct
-    non_pad_mask = slot_gold.ne(Constants.PAD)
+    non_pad_mask = slot_gold.ne(constants.PAD)
     batch_word = non_pad_mask.sum().item()
     # how many words in all sentences in this batch
     slot_total += batch_word
@@ -120,37 +100,43 @@ def eval_f1(model, validation_data, device, opt):
   intent_golds = []
   with torch.no_grad():
     for batch in tqdm(
-        validation_data, mininterval=2, desc='  - (computing F1) ', leave=False):
+        validation_data, mininterval=2, desc='  - (computing F1) ', leave=False
+    ):
       src_seq, src_char, tgt_seq = map(lambda x: x.to(device), batch) # [B,max_len]
       src_seq = src_seq[:, 1:]
       src_char = src_char[:, 1:]
       slot_gold = tgt_seq[:, 1:]
       max_len = src_seq.size(1)
-      # src_len =
-      # torch.cuda.LongTensor(np.array(get_len(src_seq.cpu()))).unsqueeze(1)
-      src_len = torch.LongTensor(np.array(get_len(src_seq.cpu()))).unsqueeze(1)
 
       intent_gold = tgt_seq[:, 0].view(-1)
-      intent_gold[intent_gold != Constants.UNK] -= Constants.TAGS
+      intent_gold[intent_gold != constants.UNK] -= constants.TAGS
 
       slot_logit, intent_logit = model(src_seq.transpose(0, 1), src_char) # [B*C]
       intent_pred = intent_logit.max(1)[1]
       slot_pred = slot_logit.max(1)[1].view(max_len, -1).transpose(0, 1)
       slot_pred = [
-        [tgt_idx2word.get(elem.item(), Constants.UNK_WORD)
-         for elem in elems if elem.item() != Constants.PAD]
-        for elems in slot_pred]
+        [
+          tgt_idx2word.get(elem.item(), constants.UNK_WORD)
+         for elem in elems if elem.item() != constants.PAD
+        ]
+        for elems in slot_pred
+      ]
       slot_gold = [
-        [tgt_idx2word.get(elem.item(), Constants.UNK_WORD)
-         for elem in elems if elem.item() != Constants.PAD]
-        for elems in slot_gold]
+        [
+          tgt_idx2word.get(elem.item(), constants.UNK_WORD)
+         for elem in elems if elem.item() != constants.PAD
+        ]
+        for elems in slot_gold
+      ]
 
-      intent_pred = [intent_idx2word.get(elem.item() +
-                                         Constants.TAGS, Constants.UNK_WORD)
-                                         for elem in intent_pred]
-      intent_gold = [intent_idx2word.get(elem.item() +
-                                         Constants.TAGS, Constants.UNK_WORD)
-                                         for elem in intent_gold]
+      intent_pred = [
+        intent_idx2word.get(elem.item() + constants.TAGS, constants.UNK_WORD)
+        for elem in intent_pred
+      ]
+      intent_gold = [
+        intent_idx2word.get(elem.item() + constants.TAGS, constants.UNK_WORD)
+        for elem in intent_gold
+      ]
 
       for i in range(len(slot_gold)):
         slot_pred[i] = slot_pred[i][:len(slot_gold[i])]
@@ -173,13 +159,14 @@ def eval_f1(model, validation_data, device, opt):
   with open('gold.txt', 'w') as f:
     f.write(lines.strip())
 
-  f1, precision, recall = computeF1Score(slot_golds, slot_preds)
+  f1, precision, recall = compute_f1_score(slot_golds, slot_preds)
   intent_acc, sent_acc = get_sent_acc('gold.txt', 'pred.txt')
 
-  print('                 F1: %.3f   Precision:%.3f   Recall:%.3f '
-        % (f1, precision, recall))
-  print('                 Intent: %.3f' % intent_acc)
-  print('                 Sent_acc: %.3f' % sent_acc)
+  print(' F1: {0:.3f}, Precision: {0:.3f}, Recall: {0:.3f}'.format(
+    f1, precision, recall
+  ))
+  print(' Intent: {0:.3f}'.format(intent_acc))
+  print(' Sent_acc: {0:.3f}'.format(sent_acc))
   return f1, precision, recall, intent_acc, sent_acc
 
 def eval_epoch(model, validation_data, device):
@@ -194,17 +181,19 @@ def eval_epoch(model, validation_data, device):
   intent_correct = 0
 
   for batch in tqdm(
-      validation_data, mininterval=2, desc='  - (Validation)   ', leave=False):
+      validation_data, mininterval=2, desc='  - (Validation)   ', leave=False
+  ):
     src_seq, src_char, tgt_seq = map(lambda x: x.to(device), batch)  # [B,max_len]
     src_seq = src_seq[:, 1:]
     src_char = src_char[:, 1:]
     slot_gold = tgt_seq[:, 1:].transpose(0, 1).contiguous().view(-1)
     intent_gold = tgt_seq[:, 0].view(-1)
-    intent_gold[intent_gold != Constants.UNK] -= Constants.TAGS
+    intent_gold[intent_gold != constants.UNK] -= constants.TAGS
 
     slot_logit, intent_logit = model(src_seq.transpose(0, 1), src_char)  # [B*C]
-    slot_loss = F.cross_entropy(slot_logit, slot_gold,
-                                ignore_index=Constants.PAD, reduction='sum')
+    slot_loss = F.cross_entropy(
+      slot_logit, slot_gold, ignore_index=constants.PAD, reduction='sum'
+    )
     intent_loss = F.cross_entropy(intent_logit, intent_gold, reduction='sum')
 
     batch_loss = slot_loss + intent_loss
@@ -215,7 +204,7 @@ def eval_epoch(model, validation_data, device):
     total_loss += batch_loss.item()
     slot_correct += batch_slot_correct
     intent_correct += batch_intent_correct
-    non_pad_mask = slot_gold.ne(Constants.PAD)
+    non_pad_mask = slot_gold.ne(constants.PAD)
     batch_word = non_pad_mask.sum().item()
     slot_total += batch_word
     intent_total += src_seq.size(0)
@@ -225,7 +214,9 @@ def eval_epoch(model, validation_data, device):
   intent_accuracy = intent_correct / intent_total
   return loss_per_word, slot_accuracy, intent_accuracy
 
-def train(model, training_data, validation_data, test_data, optimizer, device, opt):
+def train(
+    model, training_data, validation_data, test_data, optimizer, device, opt
+):
   ''' Start training '''
 
   log_train_file = None
@@ -238,7 +229,8 @@ def train(model, training_data, validation_data, test_data, optimizer, device, o
     print('[Info] Training performance will be written to file: '
           '{} and {}'.format(log_train_file, log_valid_file))
 
-    with open(log_train_file, 'a') as log_tf, open(log_valid_file, 'a') as log_vf:
+    with open(log_train_file, 'a') as log_tf, \
+         open(log_valid_file, 'a') as log_vf:
       log_tf.write('\n')
       log_tf.write('epoch,loss,ppl,accuracy\n')
       log_vf.write('epoch,loss,ppl,accuracy\n')
@@ -256,47 +248,60 @@ def train(model, training_data, validation_data, test_data, optimizer, device, o
       model, training_data, optimizer, device,
     )  # the train_loss is per word loss
 
-    print('  - (Training)   ppl: {ppl: 8.5f}, slot_accuracy: {accu:3.3f}%, '
-          'intent_accuracy:{accu2:3.3f}%, ' \
-          'elapse: {elapse:3.3f} min'.format(
-      ppl=math.exp(min(train_loss, 100)),
-      accu=100 * train_accu,
-      accu2=100 * train_intent_accu,
-      elapse=(time.time() - start) / 60)
+    print(
+      '- (Training)   ppl: {ppl: 8.5f}, slot_accuracy: {accu:3.3f}%, ' \
+      'intent_accuracy:{accu2:3.3f}%, ' \
+      'elapse: {elapse:3.3f} min'.format(
+        ppl=math.exp(min(train_loss, 100)),
+        accu=100 * train_accu,
+        accu2=100 * train_intent_accu,
+        elapse=(time.time() - start) / 60)
     )
 
     start = time.time()
-    valid_loss, valid_accu, valid_intent_accu = eval_epoch(model, validation_data, device)
+    valid_loss, valid_accu, valid_intent_accu = eval_epoch(
+      model, validation_data, device
+    )
 
     print(
-      '  - (Validation) ppl: {ppl: 8.5f}, valid_accuracy: {accu:3.3f}%, ' \
+      '- (Validation) ppl: {ppl: 8.5f}, valid_accuracy: {accu:3.3f}%, ' \
       'intent_accuracy:{accu2:3.3f}%, ' \
-      'elapse: {elapse:3.3f} min'.format(ppl=math.exp(min(valid_loss, 100)),
-                                         accu=100 * valid_accu,
-                                         accu2=100 * valid_intent_accu,
-                                         elapse=(time.time() - start) / 60))
+      'elapse: {elapse:3.3f} min'.format(
+        ppl=math.exp(min(valid_loss, 100)),
+        accu=100 * valid_accu,
+        accu2=100 * valid_intent_accu,
+        elapse=(time.time() - start) / 60)
+    )
     start = time.time()
-    test_loss, test_accu, test_intent_accu = eval_epoch(model, test_data, device)
+    test_loss, test_accu, test_intent_accu = eval_epoch(
+      model, test_data, device
+    )
 
     print(
-      '  - (Test)       ppl: {ppl: 8.5f}, test_accuracy: {accu:3.3f}%, ' \
+      '- (Test)       ppl: {ppl: 8.5f}, test_accuracy: {accu:3.3f}%, ' \
       'intent_accuracy:{accu2:3.3f}%, ' \
-      'elapse: {elapse:3.3f} min'.format(ppl=math.exp(min(test_loss, 100)),
-                                         accu=100 * test_accu,
-                                         accu2=100 * test_intent_accu,
-                                         elapse=(time.time() - start) / 60))
+      'elapse: {elapse:3.3f} min'.format(
+        ppl=math.exp(min(test_loss, 100)),
+        accu=100 * test_accu,
+        accu2=100 * test_intent_accu,
+        elapse=(time.time() - start) / 60)
+    )
 
     f1, precision, recall, intent_acc, sent_acc = eval_f1(
-      model, test_data, device, opt)
+      model, test_data, device, opt
+    )
     f1s += [f1]
 
     if sent_acc > best_sent:
       best_slot = f1
       best_intent = intent_acc
       best_sent = sent_acc
-    print('    Current best results $$ F1: %.3f, Intent acc: %.3f, ' \
-          'Sent acc: %.3f '%(best_slot,best_intent,best_sent))
-
+    print(
+      'Current best results $$ F1:{0:.3f}, Intent acc:{0:.3f}, ' \
+      'Sent acc:{0:.3f} '.format(
+        best_slot,best_intent,best_sent
+      )
+    )
 
     valid_accus.append(valid_accu)
     # scheduler.step(f1)
@@ -318,10 +323,11 @@ def train(model, training_data, validation_data, test_data, optimizer, device, o
         if f1 >= max(f1s):
           torch.save(checkpoint, model_name)
           print(
-            '    - [Info] The checkpoint file has been updated.----------------------------------------------------------------')
+            '- [Info] The checkpoint file has been updated.-------------------')
 
     if log_train_file and log_valid_file:
-      with open(log_train_file, 'a') as log_tf, open(log_valid_file, 'a') as log_vf:
+      with open(log_train_file, 'a') as log_tf, \
+           open(log_valid_file, 'a') as log_vf:
         log_tf.write(
           '{epoch},{loss: 8.5f},{ppl: 8.5f},'\
           '{accu:3.3f}\n'.format(epoch=epoch_i,
@@ -342,7 +348,7 @@ def main():
   parser.add_argument('-epoch', type=int, default=400)
   parser.add_argument('-batch_size', type=int, default=32)
   parser.add_argument('-d_model', type=int, default=150)
-  # when using Elmo, d_word is set as 1024 in models/SLSTM.py line 337
+  # when using Elmo, d_word is set as 1024 in models/slstm.py line 337
   # when using Embedding layer, d_word should be set here
   parser.add_argument('-d_word', type=int, default=1024)
   # parser.add_argument('-d_char', type=int, default=30)
@@ -363,6 +369,15 @@ def main():
   opt = parser.parse_args()
   opt.cuda = not opt.no_cuda
 
+  os.environ["CUDA_VISIBLE_DEVICES"] = constants.GPU
+  logging.disable(sys.maxsize)  # Python 3
+
+  np.random.seed(constants.SEED)
+  torch.manual_seed(constants.SEED)
+  torch.cuda.manual_seed(constants.SEED)
+  random.seed(constants.SEED)
+  torch.backends.cudnn.deterministic = True
+
   # ========= Loading Dataset =========#
   data = torch.load(opt.data)
   opt.max_token_seq_len = data['settings'].max_token_seq_len
@@ -376,10 +391,12 @@ def main():
   embeddings = None
   opt.n_intent = len(data['dict']['intent'])
   opt.n_tgt = len(data['dict']['tgt'])
-  model = sLSTM(d_word=opt.d_word, d_hidden=opt.d_model,
-                n_src_vocab=opt.src_vocab_size, n_tgt_vocab=opt.tgt_vocab_size,
-                n_intent=opt.n_intent, dropout=opt.dropout,
-                embeddings=embeddings).to(device)
+  model = sLSTM(
+    d_word=opt.d_word, d_hidden=opt.d_model,
+    n_src_vocab=opt.src_vocab_size, n_tgt_vocab=opt.tgt_vocab_size,
+    n_intent=opt.n_intent, dropout=opt.dropout,
+    embeddings=embeddings
+  ).to(device)
   if opt.restore_model:
     checkpoint = torch.load(opt.restore_model)
     model.load_state_dict(checkpoint['model'])
@@ -387,8 +404,10 @@ def main():
 
   if opt.parallel:
     model = nn.DataParallel(model)
-  optimizer = optim.Adam(filter(lambda x: x.requires_grad, model.parameters()),
-                         betas=(0.9, 0.98), eps=1e-09)
+  optimizer = optim.Adam(
+    filter(lambda x: x.requires_grad, model.parameters()),
+    betas=(0.9, 0.98), eps=1e-09
+  )
   # optimizer = optim.SGD(filter(lambda x: x.requires_grad, model.parameters()),
   #                      lr=0.001,momentum=0.9)
 
@@ -400,7 +419,7 @@ def prepare_dataloaders(data, opt):
     Dataset(src_word2idx=data['dict']['src'], tgt_word2idx=data['dict']['tgt'],
                        src_insts=data['train']['src'],
                        src_char_insts=data['train']['src_char'],
-                       tgt_insts=data['train']['tgt'], ),
+                       tgt_insts=data['train']['tgt']),
     num_workers=2,
     batch_size=opt.batch_size,
     collate_fn=paired_collate_fn, shuffle=True)
@@ -422,7 +441,6 @@ def prepare_dataloaders(data, opt):
     batch_size=opt.batch_size,
     collate_fn=paired_collate_fn)
   return train_loader, valid_loader, test_loader
-
 
 if __name__ == '__main__':
   main()
