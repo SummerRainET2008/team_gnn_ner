@@ -1,6 +1,7 @@
 #coding: utf8
 
 import os
+import sys
 import constants
 import argparse
 import math
@@ -11,13 +12,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
 import numpy as np
-from tqdm import tqdm
 import logging
 import random
+from tqdm import tqdm
 from dataset import Dataset, paired_collate_fn
 from models.slstm import sLSTM
 from evaluate import compute_f1_score, get_sent_acc
-import sys
+
 
 def cal_correct(pred, gold):
   '''
