@@ -1,3 +1,0 @@
-searchcreativework i-current_location b-condition_description b-condition_description i-restaurant_name i-restaurant_name i-current_location i-current_location b-playlist_owner b-playlist_owner b-rating_value b-rating_value i-current_location <s> <s> <s> <s> <s> <s>
-searchscreeningevent i-current_location i-current_location b-timerange i-current_location b-state i-current_location i-poi i-poi b-rating_unit b-rating_unit b-rating_unit b-rating_unit <s> <s> <s> <s> <s> <s>
-getweather i-current_location b-condition_description b-condition_description i-restaurant_name i-restaurant_name b-object_type i-current_location i-current_location i-current_location i-music_item <s> <s> <s> <s> <s> <s> <s> <s>
