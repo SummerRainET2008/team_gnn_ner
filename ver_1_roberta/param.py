@@ -17,7 +17,7 @@ class Param(ParamBase):
     ]
 
     self.pretrained_model = os.path.expanduser(
-      "~/pretrained_models/roberta.large/",
+      "~/pretrained_models/roberta/roberta.large/",
     )
     self.file_for_label_tokenizer = 'data/snips/train/intent_seq.out'
 
@@ -27,14 +27,14 @@ class Param(ParamBase):
     self.epoch_num   = 50
     self.batch_size  = 32
     self.dropout = 0.5
-    self.max_seq_len = 30
+    self.max_seq_len = 50
     self.d_word = 1024
     self.d_hidden = 150 # must be divisible by the number of attention heads
     self.src_vocab_size = 52000
     self.tgt_vocab_size = TAGS
     self.n_intent = INTENTS
-    self.train_sample_num = 12814
-    self.eval_gap_instance_num = 128
+    self.train_sample_num = 13084
+    self.eval_gap_instance_num = 1280
 
     self.use_polynormial_decay = False
     self.incremental_train = False

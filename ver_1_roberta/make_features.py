@@ -5,24 +5,6 @@ from ver_1_roberta.param import Param
 from pytorch_transformers import RobertaTokenizer
 from pa_nlp.nlp import *
 
-def match(word_list, subword_list):
-  indices = []
-  tmp = ''
-  count = 0
-  j = 0
-  for i in range(len(word_list)):
-    if word_list[i] == subword_list[j]:
-      indices.append(i)
-    else:
-      while (word_list[i] != tmp + subword_list[j]):
-        tmp += subword_list[j]
-        j += 1
-        count += 1
-      indices.extend([i] * (count + 1))
-      tmp = ''
-      count = 0
-    j += 1
-  return indices
 
 class LabelTokenizer:
   _inst = None
@@ -36,11 +18,15 @@ class LabelTokenizer:
         words = sent.split()
         label_insts += [words]
 
-    full_intent = set(
+    full_intent = sorted(
+      set(
       w for inst in label_insts for i, w in enumerate(inst) if i == 0
     )
-    full_tag = set(
+    )
+    full_tag = sorted(
+      set(
       w for inst in label_insts for i, w in enumerate(inst) if i != 0
+    )
     )
 
     tag2idx = {BOS_WORD: cls_id,
@@ -59,9 +45,10 @@ class LabelTokenizer:
     self.idx2tag = {value: key for key, value in tag2idx.items()}
 
     self.indent2idx = intent2idx
-    print('number of intents:', len(self.indent2idx))
     self.tag2idx = tag2idx
-    print('number of tags:', len(self.tag2idx))
+    print(f'number of intents:{len(self.indent2idx)}')
+    print(f'number of tags:{len(self.tag2idx)}')
+    print(f'O:{self.tag2idx["O"]}')
 
   @staticmethod
   def get_instance():
@@ -126,6 +113,31 @@ class Tokenizer:
       result.append(subword)
     return result
 
+  def decode(self, subword_ids):
+    sent = self._tokenizer.decode(subword_ids)
+    return sent
+
+  def match(self, word_list, subword_ids):
+    indices = []
+    tmp = []
+    count = 0
+    j = 0
+    for i in range(len(word_list)):
+      see = self.decode(subword_ids[j]).strip()
+      if self.decode(subword_ids[j]).strip() == word_list[i]:
+        indices.append(i)
+      else:
+        while self.decode(tmp + [subword_ids[j]]).strip() != word_list[i]:
+          see = self.decode(subword_ids[j]).strip()
+          tmp += [subword_ids[j]]
+          j += 1
+          count += 1
+        indices.extend([i] * (count + 1))
+        tmp = []
+        count = 0
+      j += 1
+    return indices
+
   def get_vob_size(self):
     return len(self._tokenizer)
 
@@ -149,12 +161,13 @@ def process(src_file: str, tgt_file: str, out_file: str, param: Param):
     for sent in get_point(src_file):
       line += 1
       subword_ids, mask = tokenizer.tokenize(sent, param.max_seq_len)
-      subword_list = tokenizer.convert_ids(subword_ids)
+      # subword_list = tokenizer.convert_ids(subword_ids)
+      # print(subword_list)
       try:
-        indices = match(sent.lower().split()[1:], subword_list)
+        indices = tokenizer.match(sent.lower().split()[1:], subword_ids)
       except IndexError:
         skip_lines.append(line)
-        # print(sent)
+        print(sent)
         continue
       src_insts.append(subword_ids)
       masks.append(mask)
@@ -168,7 +181,6 @@ def process(src_file: str, tgt_file: str, out_file: str, param: Param):
       intent_id, tag_ids = label_tokenizer.tokenize(label, param.max_seq_len)
       intent_insts.append(intent_id)
       tag_insts.append(np.array(tag_ids))
-      print(f'tag_id:{tag_ids}')
 
     # print(len(src_insts), len(indices_insts), len(masks),
     #       len(intent_insts), len(tag_insts))
@@ -189,7 +201,6 @@ def process(src_file: str, tgt_file: str, out_file: str, param: Param):
 
   data = list(data_generator())
   pickle.dump(data, open(out_file, "wb"))
-
 
 def main():
   parser = optparse.OptionParser(usage="cmd [optons]")

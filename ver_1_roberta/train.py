@@ -11,7 +11,7 @@ from pa_nlp.nlp import Logger
 from pa_nlp.pytorch.estimator.train import TrainerBase
 from ver_1_roberta import *
 from ver_1_roberta.dataset import get_batch_data
-from ver_1_roberta._model import sLSTM
+from ver_1_roberta._model import SLSTM
 from ver_1_roberta.evaluate import compute_f1_score, get_sent_acc
 from ver_1_roberta.make_features import LabelTokenizer
 from ver_1_roberta.param import Param
@@ -23,7 +23,7 @@ class Trainer(TrainerBase):
     param.verify()
 
     self._opt_vali_error = -100
-    model = sLSTM(
+    model = SLSTM(
       d_word=param.d_word, d_hidden=param.d_hidden,
       n_src_vocab=param.src_vocab_size, n_tgt_vocab=param.tgt_vocab_size,
       n_intent=param.n_intent, dropout=param.dropout
@@ -108,6 +108,7 @@ class Trainer(TrainerBase):
         ]
         for tags in torch.mul(slot_pred, b_masks)
       ]
+
       slot_gold = [
         [
           label_tokenizer.idx2tag[tag.item()]
