@@ -8,7 +8,6 @@ class Param(ParamBase):
   def __init__(self):
     super(Param, self).__init__("ver_1_roberta")
 
-
     self.train_files = [
       f"{self.path_feat}/train.pydict"
     ]
@@ -25,7 +24,7 @@ class Param(ParamBase):
     self.optimizer_name = "Adam"
     self.bert_lr = 1.5e-5
     self.lr = 5e-2
-    self.epoch_num   = 1000
+    self.epoch_num   = 50
     self.batch_size  = 32
     self.dropout = 0.5
     self.max_seq_len = 30
@@ -34,7 +33,7 @@ class Param(ParamBase):
     self.src_vocab_size = 52000
     self.tgt_vocab_size = TAGS
     self.n_intent = INTENTS
-    self.train_sample_num = 12824
+    self.train_sample_num = 12814
     self.eval_gap_instance_num = 128
 
     self.use_polynormial_decay = False

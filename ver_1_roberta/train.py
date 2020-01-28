@@ -1,6 +1,5 @@
 #coding: utf8
 
-
 import torch
 import torch.nn as nn
 import torch.utils.data
@@ -21,7 +20,7 @@ from ver_1_roberta.param import Param
 class Trainer(TrainerBase):
   def __init__(self):
     param = Param()
-    # param.verify()
+    param.verify()
 
     self._opt_vali_error = -100
     model = sLSTM(
@@ -99,7 +98,6 @@ class Trainer(TrainerBase):
       slot_logit, intent_logit = self.predict(b_subword_ids, b_masks)
       b_masks = b_masks.ne(True)
 
-      intent_pred = intent_logit.max(1)[1] # (b)
       slot_pred = \
         slot_logit.max(1)[1].view(self._param.max_seq_len, -1).transpose(0, 1) #(b,l)
 
@@ -118,6 +116,8 @@ class Trainer(TrainerBase):
         for tags in torch.mul(b_tag_ids, b_masks)
       ]
 
+      intent_pred = intent_logit.max(1)[1]  # (b)
+      # b_intent_ids = b_intent_ids.view(-1)  # (b)
       intent_pred = [
         label_tokenizer.idx2intent[tag.item()] for tag in intent_pred
       ]
@@ -130,32 +130,32 @@ class Trainer(TrainerBase):
       intent_preds += intent_pred
       intent_golds += intent_gold
 
-      lines = ''
-      for intent_pred, slot_pred in zip(intent_preds, slot_preds):
-        line = intent_pred + ' ' + ' '.join(slot_pred)
-        lines += line + '\n'
-      with open(f"{self._param.path_work}/pred.txt", 'w') as f:
-        f.write(lines)
+    lines = ''
+    for intent_pred, slot_pred in zip(intent_preds, slot_preds):
+      line = intent_pred + ' ' + ' '.join(slot_pred)
+      lines += line + '\n'
+    with open(f"{self._param.path_work}/pred.txt", 'w') as f:
+      f.write(lines)
 
-      lines = ''
-      for intent_gold, slot_gold in zip(intent_golds, slot_golds):
-        line = intent_gold + ' ' + ' '.join(slot_gold)
-        lines += line + '\n'
-      with open(f"{self._param.path_work}/gold.txt", 'w') as f:
-        f.write(lines.strip())
+    lines = ''
+    for intent_gold, slot_gold in zip(intent_golds, slot_golds):
+      line = intent_gold + ' ' + ' '.join(slot_gold)
+      lines += line + '\n'
+    with open(f"{self._param.path_work}/gold.txt", 'w') as f:
+      f.write(lines.strip())
 
-      f1, precision, recall = compute_f1_score(slot_golds, slot_preds)
-      intent_acc, sent_acc = get_sent_acc(
-        f"{self._param.path_work}/gold.txt",
-        f"{self._param.path_work}/pred.txt"
-      )
+    f1, precision, recall = compute_f1_score(slot_golds, slot_preds)
+    intent_acc, sent_acc = get_sent_acc(
+      f"{self._param.path_work}/gold.txt",
+      f"{self._param.path_work}/pred.txt"
+    )
 
-      print('F1: {0:.3f}, Precision: {0:.3f}, Recall: {0:.3f}'.format(
-        f1, precision, recall
-      ))
-      print('Intent: {0:.3f}'.format(intent_acc))
-      print('Sent_acc: {0:.3f}'.format(sent_acc))
-      return f1
+    print('F1: {0:.3f}, Precision: {0:.3f}, Recall: {0:.3f}'.format(
+      f1, precision, recall
+    ))
+    print('Intent: {0:.3f}'.format(intent_acc))
+    print('Sent_acc: {0:.3f}'.format(sent_acc))
+    return f1
 
 
 

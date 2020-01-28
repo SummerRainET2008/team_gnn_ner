@@ -32,7 +32,7 @@ class LabelTokenizer:
     label_insts = []
     with open(param.file_for_label_tokenizer) as f:
       for sent in f:
-        sent = sent.lower()
+        # sent = sent.lower()
         words = sent.split()
         label_insts += [words]
 
@@ -70,12 +70,13 @@ class LabelTokenizer:
     return LabelTokenizer._inst
 
   def tokenize(self, label, max_len):
-    label = label.lower().split()
+    # label = label.lower().split()
+    label = label.split()
     intent_id = self.indent2idx[label[0]]
     tag_ids = [self.tag2idx[x] for x in label[1:]]
-    # tag_ids = tag_ids[: max_len]
-    # diff = max_len - len(tag_ids)
-    # tag_ids = tag_ids + [pad_id] * diff
+    tag_ids = tag_ids[: max_len]
+    diff = max_len - len(tag_ids)
+    tag_ids = tag_ids + [pad_id] * diff
     return intent_id, tag_ids
 
 class Tokenizer:
@@ -153,7 +154,7 @@ def process(src_file: str, tgt_file: str, out_file: str, param: Param):
         indices = match(sent.lower().split()[1:], subword_list)
       except IndexError:
         skip_lines.append(line)
-        print(sent)
+        # print(sent)
         continue
       src_insts.append(subword_ids)
       masks.append(mask)
@@ -167,6 +168,7 @@ def process(src_file: str, tgt_file: str, out_file: str, param: Param):
       intent_id, tag_ids = label_tokenizer.tokenize(label, param.max_seq_len)
       intent_insts.append(intent_id)
       tag_insts.append(np.array(tag_ids))
+      print(f'tag_id:{tag_ids}')
 
     # print(len(src_insts), len(indices_insts), len(masks),
     #       len(intent_insts), len(tag_insts))
@@ -176,10 +178,13 @@ def process(src_file: str, tgt_file: str, out_file: str, param: Param):
     for (
         subword_ids, indices, mask, intent_id, tag_ids
     ) in zip(src_insts, indices_insts, masks, intent_insts, tag_insts):
+      # print(f'tag_id0:{tag_ids}')
       tag_ids = list(tag_ids[indices])
       tag_ids = tag_ids[: param.max_seq_len]
       diff = param.max_seq_len - len(tag_ids)
       tag_ids = tag_ids + [pad_id] * diff
+
+      # print(f'tag_id1:{tag_ids}')
       yield subword_ids, mask, intent_id, tag_ids
 
   data = list(data_generator())
@@ -197,17 +202,17 @@ def main():
 
   print('[INFO] Writing training files.')
   process(
-    "data/snips_5/train/intent_seq.in", "data/snips_5/train/intent_seq.out",
+    "data/snips/train/intent_seq.in", "data/snips/train/intent_seq.out",
     f"{param.path_feat}/train.pydict", param
   )
   print('[INFO] Writing validation files.')
   process(
-    "data/snips_5/train/intent_seq.in", "data/snips_5/train/intent_seq.out",
+    "data/snips/train/intent_seq.in", "data/snips/train/intent_seq.out",
     f"{param.path_feat}/vali.pydict", param
   )
   print('[INFO] Writing test files.')
   process(
-    "data/snips_5/train/intent_seq.in", "data/snips_5/train/intent_seq.out",
+    "data/snips/train/intent_seq.in", "data/snips/train/intent_seq.out",
     f"{param.path_feat}/test.pydict", param
   )
 
