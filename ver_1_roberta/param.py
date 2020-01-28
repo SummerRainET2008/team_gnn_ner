@@ -18,8 +18,9 @@ class Param(ParamBase):
       f"{self.path_feat}/test.pydict",
     ]
 
+    #todo: summer: keep this path style.
     self.pretrained_model = os.path.expanduser(
-      "~/pretrained_models/roberta.large/",
+      "~/pretrained_models/roberta/roberta.large/",
     )
     self.file_for_label_tokenizer = 'data/snips/train/intent_seq.out'
 
