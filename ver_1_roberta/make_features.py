@@ -186,6 +186,7 @@ def process(src_file: str, tgt_file: str, out_file: str, param: Param):
   pickle.dump(data, open(out_file, "wb"))
 
 
+#todo: summer: only one blank line.
 def main():
   parser = optparse.OptionParser(usage="cmd [optons]")
   # parser.add_option("-q", "--quiet", action="store_true", dest="verbose",

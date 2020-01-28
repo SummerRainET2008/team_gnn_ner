@@ -8,6 +8,7 @@ class Param(ParamBase):
   def __init__(self):
     super(Param, self).__init__("ver_1_roberta")
 
+    # todo: summer: only one blank line.
 
     self.train_files = [
       f"{self.path_feat}/train.pydict"

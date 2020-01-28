@@ -7,11 +7,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from ver_1_roberta import *
 from allennlp.modules.elmo import Elmo
-from \
-  allennlp.modules.seq2seq_encoders.stacked_self_attention \
-  import \
+#todo: summer: take this form.
+from allennlp.modules.seq2seq_encoders.stacked_self_attention import\
   StackedSelfAttentionEncoder
 
+#todo: summer: class name.
 class penalized_tanh(torch.nn.Module):
   def __init__(self):
     super().__init__()
@@ -19,6 +19,7 @@ class penalized_tanh(torch.nn.Module):
   def forward(self, tensor):
     return 0.75 * F.relu(F.tanh(tensor)) + 0.25 * F.tanh(tensor)
 
+#todo: summer: class name. please rectify all!
 class sLSTMCell(nn.Module):
   '''
   Args:
@@ -54,6 +55,7 @@ class sLSTMCell(nn.Module):
     self._all_gate_weights = []
 
     # define parameters for word nodes
+    # todo: summer: (), java style
     word_gate_dict = dict(
       [('input_gate', 'i'), ('left_forget_gate', 'l'),
        ('right_forget_gate', 'r'), ('forget_gate', 'f'),
@@ -62,6 +64,7 @@ class sLSTMCell(nn.Module):
 
     for (gate_name, gate_tag) in word_gate_dict.items():
       # weight: (out_features, in_features)
+      # todo: summer: (), java style
       w_w = nn.Parameter(torch.Tensor(d_hidden,
                                       (n_windows * 2 + 1) * d_hidden))
       w_u = nn.Parameter(torch.Tensor(d_hidden, d_word))
@@ -76,6 +79,7 @@ class sLSTMCell(nn.Module):
       self._all_gate_weights.append(param_names)
 
     # define parameters for sentence node
+    # todo: summer: (), java style
     sentence_gate_dict = dict(
       [('sentence_forget_gate', 'g'), ('word_forget_gate', 'f'),
        ('output_gate', 'o')])
@@ -117,6 +121,7 @@ class sLSTMCell(nn.Module):
     context_l = [torch.stack(zeros[:i] + slices[:len(slices) - i], dim=0)
                  for i in range(window_size, 0, -1)]
     context_l.append(hx)
+    # todo: summer: (), java style
     context_r = [
       torch.stack(slices[i + 1: len(slices)] + zeros[:i + 1], dim=0)
       for i in range(0, window_size)]
@@ -154,6 +159,8 @@ class sLSTMCell(nn.Module):
     # update word nodes
     epsilon = self.in_window_context(h_wt_1, window_size=self.n_windows)
     # epsilon: (l, b, d_word or emb_size * (2 * window_size + 1)
+    # todo: summer: (), java style
+    # todo: do not use "single char" to denote an important variable.
     i = F.sigmoid(F.linear(epsilon, self.w_wi) +
                   F.linear(src_seq, self.w_ui) +
                   F.linear(h_gt_1, self.w_vi) + self.w_bi)
@@ -182,8 +189,11 @@ class sLSTMCell(nn.Module):
     c_wt_l, c_wt_1, c_wt_r = \
       self.in_window_context(c_wt_1).chunk(3, dim=2) # split by dim 2
     # c_wt_: (l, b, d_word)
-    c_mergered = torch.stack((c_wt_l, c_wt_1, c_wt_r,
-                              c_gt_1.expand_as(c_wt_1.data), u), dim=0)
+    # todo: summer: (), java style
+    c_mergered = torch.stack(
+      (c_wt_l, c_wt_1, c_wt_r, c_gt_1.expand_as(c_wt_1.data), u),
+      dim=0
+    )
 
     c_wt = gates_normalized.mul(c_mergered).sum(dim=0)
     c_wt = c_wt.masked_fill(seq_mask, 0)

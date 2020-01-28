@@ -1,5 +1,6 @@
 #coding: utf8
 
+#todo: summer: only one blank line.
 
 import torch
 import torch.nn as nn
