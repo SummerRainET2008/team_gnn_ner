@@ -31,8 +31,9 @@ class LabelTokenizer:
 
     tag2idx = {BOS_WORD: cls_id,
                EOS_WORD: sep_id,
-               PAD_WORD: pad_id}
-    intent2idx = {}
+               PAD_WORD: pad_id,
+               UNK_WORD: unk_id}
+    intent2idx = {UNK_WORD: unk_id}
 
     for i in full_intent:
       if i not in intent2idx:
@@ -57,13 +58,20 @@ class LabelTokenizer:
     return LabelTokenizer._inst
 
   def tokenize(self, label, max_len):
+    # TODO: only make tag which makes KeyError as unk
     # label = label.lower().split()
     label = label.split()
-    intent_id = self.indent2idx[label[0]]
-    tag_ids = [self.tag2idx[x] for x in label[1:]]
-    tag_ids = tag_ids[: max_len]
-    diff = max_len - len(tag_ids)
-    tag_ids = tag_ids + [pad_id] * diff
+    try:
+      intent_id = self.indent2idx[label[0]]
+      tag_ids = [self.tag2idx[x] for x in label[1:]]
+      tag_ids = tag_ids[: max_len]
+      diff = max_len - len(tag_ids)
+      tag_ids = tag_ids + [pad_id] * diff
+    except KeyError:
+      print(f'KeyError: {label}')
+      intent_id = unk_id
+      tag_ids = [unk_id] * max_len
+
     return intent_id, tag_ids
 
 class Tokenizer:
@@ -92,8 +100,6 @@ class Tokenizer:
     sentence = sentence.lower()
     ids = self._tokenizer.encode(sentence)
     word_ids = ids[1:]
-    # word_ids = [self._cls_idx] + ids + [self._sep_idx]
-
     word_ids = word_ids[: max_len]
     diff = max_len - len(word_ids)
     word_ids = word_ids + [self._pad_idx] * diff
@@ -165,7 +171,7 @@ def process(src_file: str, tgt_file: str, out_file: str, param: Param):
         indices = tokenizer.match(sent.lower().split()[1:], subword_ids)
       except IndexError:
         skip_lines.append(line)
-        print(sent)
+        print(f'IndexError: {sent}')
         continue
       src_insts.append(subword_ids)
       masks.append(mask)
@@ -211,19 +217,19 @@ def main():
 
   print('[INFO] Writing training files.')
   process(
-    "data/snips/train/intent_seq.in", "data/snips/train/intent_seq.out",
+    "data/atis/train/intent_seq.in", "data/atis/train/intent_seq.out",
     f"{param.path_feat}/train.pydict", param
   )
   print('[INFO] Writing validation files.')
   process(
-    "data/snips/train/intent_seq.in", "data/snips/train/intent_seq.out",
+    "data/atis/train/intent_seq.in", "data/atis/train/intent_seq.out",
     f"{param.path_feat}/vali.pydict", param
   )
-  print('[INFO] Writing test files.')
-  process(
-    "data/snips/train/intent_seq.in", "data/snips/train/intent_seq.out",
-    f"{param.path_feat}/test.pydict", param
-  )
+  # print('[INFO] Writing test files.')
+  # process(
+  #   "data/snips/train/intent_seq.in", "data/snips/train/intent_seq.out",
+  #   f"{param.path_feat}/test.pydict", param
+  # )
 
 if __name__ == "__main__":
   main()

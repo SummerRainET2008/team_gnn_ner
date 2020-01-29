@@ -17,7 +17,7 @@ class Param(ParamBase):
     self.pretrained_model = os.path.expanduser(
       "~/pretrained_models/roberta/roberta.large/",
     )
-    self.file_for_label_tokenizer = 'data/snips/train/intent_seq.out'
+    self.file_for_label_tokenizer = 'data/atis/train/intent_seq.out'
 
     self.optimizer_name = "Adam"
     self.bert_lr = 1.5e-5
