@@ -19,16 +19,13 @@ class LabelTokenizer:
         label_insts += [words]
 
     full_intent = sorted(
-      set(
-      w for inst in label_insts for i, w in enumerate(inst) if i == 0
-    )
+      set(w for inst in label_insts for i, w in enumerate(inst) if i == 0)
     )
     full_tag = sorted(
-      set(
-      w for inst in label_insts for i, w in enumerate(inst) if i != 0
-    )
+      set(w for inst in label_insts for i, w in enumerate(inst) if i != 0)
     )
 
+    #todo: summer: (), java
     tag2idx = {BOS_WORD: cls_id,
                EOS_WORD: sep_id,
                PAD_WORD: pad_id}
@@ -185,9 +182,8 @@ def process(src_file: str, tgt_file: str, out_file: str, param: Param):
     assert len(src_insts) == len(indices_insts) == len(masks)\
            == len(intent_insts) == len(tag_insts)
     print('[INFO] {} samples in total.'.format(len(src_insts)))
-    for (
-        subword_ids, indices, mask, intent_id, tag_ids
-    ) in zip(src_insts, indices_insts, masks, intent_insts, tag_insts):
+    for (subword_ids, indices, mask, intent_id, tag_ids) \
+      in zip(src_insts, indices_insts, masks, intent_insts, tag_insts):
       # print(f'tag_id0:{tag_ids}')
       tag_ids = list(tag_ids[indices])
       tag_ids = tag_ids[: param.max_seq_len]

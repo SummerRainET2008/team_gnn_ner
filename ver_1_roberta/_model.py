@@ -143,11 +143,13 @@ class SLSTMCell(nn.Module):
 
     # update sentence node
     h_hat = h_wt_1.mean(dim=0)
+    #todo: summer: (), java
     fg = F.sigmoid(F.linear(h_gt_1, self.s_wg) +
                    F.linear(h_hat, self.s_ug) +
                    self.s_bg)
     output_gate = F.sigmoid(F.linear(h_gt_1, self.s_wo) +
                   F.linear(h_hat, self.s_uo) + self.s_bo)
+    #todo: summer: (), java
     fi = F.sigmoid(F.linear(h_gt_1, self.s_wf) +
                    F.linear(h_wt_1, self.s_uf) +
                    self.s_bf).masked_fill(seq_mask, -1e25)
@@ -266,6 +268,8 @@ class SLSTM(nn.Module):
     )
 
     self.filter_linear = nn.Linear(3 * d_hidden, d_hidden)
+
+    #todo: summer: (), java
     self.multi_att = StackedSelfAttentionEncoder(input_dim=d_hidden,
                                                  hidden_dim=d_hidden,
                                                  projection_dim=d_hidden,
@@ -283,6 +287,7 @@ class SLSTM(nn.Module):
     self.slot_out = nn.Linear(d_hidden, n_tgt_vocab)
     self.intent_out = nn.Linear(d_hidden, n_intent)
     self.dropout = nn.Dropout(dropout)
+    #todo: summer: (), java
     self.cell = SLSTMCell(d_word=d_word, d_hidden=d_hidden,
                           n_windows=window_size,
                           n_sent_nodes=sentence_nodes, bias=bias)
