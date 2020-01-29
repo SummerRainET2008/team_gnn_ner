@@ -352,6 +352,7 @@ class SLSTM(nn.Module):
     h_w *= attn_gate
 
 
-    slot_logit = self.slot_out(h_w).view(-1, self.n_tgt_vocab) # (l*b,n_tgt)
-    sent_logit = self.intent_out(h_s).view(-1, self.n_intent)  # (b,n_intent)
+    slot_logit = self.slot_out(h_w) # (l,b,n_tgt)
+    sent_logit = self.intent_out(h_s)  # (1,b,n_intent)
+
     return slot_logit, sent_logit

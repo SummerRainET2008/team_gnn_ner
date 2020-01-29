@@ -12,9 +12,7 @@ class Param(ParamBase):
       f"{self.path_feat}/train.pydict"
     ]
     self.vali_file = f"{self.path_feat}/vali.pydict"
-    self.test_files = [
-      f"{self.path_feat}/test.pydict",
-    ]
+    self.test_files = []
 
     self.pretrained_model = os.path.expanduser(
       "~/pretrained_models/roberta/roberta.large/",
@@ -25,7 +23,7 @@ class Param(ParamBase):
     self.bert_lr = 1.5e-5
     self.lr = 5e-2
     self.epoch_num   = 50
-    self.batch_size  = 32
+    self.batch_size_one_gpu  = 32
     self.dropout = 0.5
     self.max_seq_len = 50
     self.d_word = 1024

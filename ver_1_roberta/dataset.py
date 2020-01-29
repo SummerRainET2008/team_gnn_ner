@@ -33,7 +33,7 @@ def get_batch_data(data_files, epoch_num, shuffle: bool):
   param = Param()
   dataset = _Dataset(data_files)
   data_iter = torch.utils.data.DataLoader(
-    dataset, param.batch_size, shuffle=shuffle,
+    dataset, param.get_batch_size_all_gpus(), shuffle=shuffle,
     num_workers=2,
     collate_fn=lambda x: x
   )

@@ -123,12 +123,10 @@ class Tokenizer:
     count = 0
     j = 0
     for i in range(len(word_list)):
-      see = self.decode(subword_ids[j]).strip()
       if self.decode(subword_ids[j]).strip() == word_list[i]:
         indices.append(i)
       else:
         while self.decode(tmp + [subword_ids[j]]).strip() != word_list[i]:
-          see = self.decode(subword_ids[j]).strip()
           tmp += [subword_ids[j]]
           j += 1
           count += 1

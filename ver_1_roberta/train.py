@@ -64,6 +64,9 @@ class Trainer(TrainerBase):
 
     '''
     slot_logit, intent_logit = self.predict(b_subword_ids, b_masks)
+    slot_logit = slot_logit.view(-1, self._param.tgt_vocab_size) # (l*b,n_tgt)
+    intent_logit = intent_logit.view(-1, self._param.n_intent)
+
     slot_gold = b_tag_ids.transpose(0, 1).contiguous().view(-1) # (b*l)
     intent_gold = b_intent_ids.view(-1) # (b)
     slot_loss = nn.functional.cross_entropy(
@@ -96,6 +99,9 @@ class Trainer(TrainerBase):
       # b_tag_ids: (b,l)
       # b_intent_ids: (b)
       slot_logit, intent_logit = self.predict(b_subword_ids, b_masks)
+      slot_logit = slot_logit.view(-1, self._param.tgt_vocab_size) # (l*b,n_tgt)
+      intent_logit = intent_logit.view(-1, self._param.n_intent)
+
       b_masks = b_masks.ne(True)
 
       slot_pred = \
