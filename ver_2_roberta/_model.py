@@ -2,11 +2,9 @@
 
 import math
 import torch
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from ver_1_roberta import *
-from allennlp.modules.elmo import Elmo
+from ver_2_roberta import *
 from allennlp.modules.seq2seq_encoders.stacked_self_attention import\
   StackedSelfAttentionEncoder
 
@@ -61,9 +59,7 @@ class SLSTMCell(nn.Module):
 
     for (gate_name, gate_tag) in word_gate_dict.items():
       # weight: (out_features, in_features)
-      w_w = nn.Parameter(
-        torch.Tensor(d_hidden, (n_windows * 2 + 1) * d_hidden)
-      )
+      w_w = nn.Parameter(torch.Tensor(d_hidden, (n_windows * 2 + 1) * d_hidden))
       w_u = nn.Parameter(torch.Tensor(d_hidden, d_word))
       w_v = nn.Parameter(torch.Tensor(d_hidden, d_hidden))
       w_b = nn.Parameter(torch.Tensor(d_hidden))
@@ -136,64 +132,63 @@ class SLSTMCell(nn.Module):
 
     seq_mask = seq_mask.unsqueeze(dim=2) #(l,b,1)
     # print('seq_mask:', seq_mask)
-    h_gt_1 = state[0][-self.num_g:]  # sent node is in the end
-    h_wt_1 = state[0][:-self.num_g].masked_fill(seq_mask, 0) #（l,b,d)
-    c_gt_1 = state[1][-self.num_g:]
-    c_wt_1 = state[1][:-self.num_g].masked_fill(seq_mask, 0)
+    prev_h_gt = state[0][-self.num_g:]  # sent node is in the end
+    prev_h_wt = state[0][:-self.num_g].masked_fill(seq_mask, 0) #（l,b,d)
+    prev_c_gt = state[1][-self.num_g:]
+    prev_c_wt = state[1][:-self.num_g].masked_fill(seq_mask, 0)
 
     # update sentence node
-    h_hat = h_wt_1.mean(dim=0)
-    #todo: summer: (), java
-    fg = F.sigmoid(F.linear(h_gt_1, self.s_wg) +
-                   F.linear(h_hat, self.s_ug) +
-                   self.s_bg)
-    output_gate = F.sigmoid(F.linear(h_gt_1, self.s_wo) +
-                  F.linear(h_hat, self.s_uo) + self.s_bo)
-    #todo: summer: (), java
-    fi = F.sigmoid(F.linear(h_gt_1, self.s_wf) +
-                   F.linear(h_wt_1, self.s_uf) +
-                   self.s_bf).masked_fill(seq_mask, -1e25)
+    h_hat = prev_h_wt.mean(dim=0)
+    fg = F.sigmoid(
+      F.linear(prev_h_gt, self.s_wg) + F.linear(h_hat, self.s_ug) + self.s_bg
+    )
+    output_gate = F.sigmoid(
+      F.linear(prev_h_gt, self.s_wo) + F.linear(h_hat, self.s_uo) + self.s_bo
+    )
+    fi = F.sigmoid(
+      F.linear(prev_h_gt, self.s_wf) + F.linear(prev_h_wt, self.s_uf) + self.s_bf
+    ).masked_fill(seq_mask, -1e25)
     fi_normalized = F.softmax(fi, dim=0)
-    c_gt = fg.mul(c_gt_1).add(fi_normalized.mul(c_wt_1).sum(dim=0))
+    c_gt = fg.mul(prev_c_gt).add(fi_normalized.mul(prev_c_wt).sum(dim=0))
     h_gt = output_gate.mul(F.tanh(c_gt))
 
     # update word nodes
-    epsilon = self.in_window_context(h_wt_1, window_size=self.n_windows)
+    epsilon = self.in_window_context(prev_h_wt, window_size=self.n_windows)
     # epsilon: (l, b, d_word or emb_size * (2 * window_size + 1)
     input_gate = F.sigmoid(
       F.linear(epsilon, self.w_wi) +
       F.linear(src_seq, self.w_ui) +
-      F.linear(h_gt_1, self.w_vi) + self.w_bi
+      F.linear(prev_h_gt, self.w_vi) + self.w_bi
     )
     left_gate = F.sigmoid(
       F.linear(epsilon, self.w_wl) +
       F.linear(src_seq, self.w_ul) +
-      F.linear(h_gt_1, self.w_vl) + self.w_bl
+      F.linear(prev_h_gt, self.w_vl) + self.w_bl
     )
     right_gate = F.sigmoid(
       F.linear(epsilon, self.w_wr) +
       F.linear(src_seq, self.w_ur) +
-      F.linear(h_gt_1, self.w_vr) + self.w_br
+      F.linear(prev_h_gt, self.w_vr) + self.w_br
     )
     forget_gate = F.sigmoid(
       F.linear(epsilon, self.w_wf) +
       F.linear(src_seq, self.w_uf) +
-      F.linear(h_gt_1, self.w_vf) + self.w_bf
+      F.linear(prev_h_gt, self.w_vf) + self.w_bf
     )
     sent_gate = F.sigmoid(
       F.linear(epsilon, self.w_ws) +
       F.linear(src_seq, self.w_us) +
-      F.linear(h_gt_1, self.w_vs) + self.w_bs
+      F.linear(prev_h_gt, self.w_vs) + self.w_bs
     )
     output_gate = F.sigmoid(
       F.linear(epsilon, self.w_wo) +
       F.linear(src_seq, self.w_uo) +
-      F.linear(h_gt_1, self.w_vo) + self.w_bo
+      F.linear(prev_h_gt, self.w_vo) + self.w_bo
     )
     current_update = F.tanh(
       F.linear(epsilon, self.w_wu) +
       F.linear(src_seq, self.w_uu) +
-      F.linear(h_gt_1, self.w_vu) + self.w_bu
+      F.linear(prev_h_gt, self.w_vu) + self.w_bu
     )
 
     gates = torch.stack(
@@ -203,11 +198,11 @@ class SLSTMCell(nn.Module):
     # gates: (5*l,b,d)
     gates_normalized = F.softmax(gates.masked_fill(seq_mask, -1e25), dim=0)
 
-    c_wt_l, c_wt_1, c_wt_r = \
-      self.in_window_context(c_wt_1).chunk(3, dim=2) # split by dim 2
+    c_wt_l, prev_c_wt, c_wt_r = \
+      self.in_window_context(prev_c_wt).chunk(3, dim=2) # split by dim 2
     # c_wt_: (l, b, d_word)
     c_mergered = torch.stack(
-      (c_wt_l, c_wt_1, c_wt_r, c_gt_1.expand_as(c_wt_1.data), current_update),
+      (c_wt_l, prev_c_wt, c_wt_r, prev_c_gt.expand_as(prev_c_wt.data), current_update),
       dim=0
     )
 
@@ -245,12 +240,12 @@ class SLSTM(nn.Module):
   def __init__(self, d_word, n_src_vocab, n_tgt_vocab, n_intent, d_hidden,
                window_size=3, steps=4, sentence_nodes=1, bias=True, dropout=0.2):
     super(SLSTM, self).__init__()
-    self.sw1 = nn.Sequential(
+    self._sw1 = nn.Sequential(
       nn.Conv1d(d_hidden, d_hidden, kernel_size=1, padding=0),
       nn.BatchNorm1d(d_hidden),
       nn.ReLU()
     )
-    self.sw3 = nn.Sequential(
+    self._sw3 = nn.Sequential(
       nn.Conv1d(d_hidden, d_hidden, kernel_size=1, padding=0),
       nn.ReLU(),
       nn.BatchNorm1d(d_hidden),
@@ -258,7 +253,7 @@ class SLSTM(nn.Module):
       nn.ReLU(),
       nn.BatchNorm1d(d_hidden)
     )
-    self.sw33 = nn.Sequential(
+    self._sw33 = nn.Sequential(
       nn.Conv1d(d_hidden, d_hidden, kernel_size=1, padding=0),
       nn.ReLU(),
       nn.BatchNorm1d(d_hidden),
@@ -269,28 +264,32 @@ class SLSTM(nn.Module):
 
     self.filter_linear = nn.Linear(3 * d_hidden, d_hidden)
 
-    #todo: summer: (), java
-    self.multi_att = StackedSelfAttentionEncoder(input_dim=d_hidden,
-                                                 hidden_dim=d_hidden,
-                                                 projection_dim=d_hidden,
-                                                 feedforward_hidden_dim
-                                                               =2 * d_hidden,
-                                                 num_layers=1,
-                                                 num_attention_heads=5)
+    self._multi_att = StackedSelfAttentionEncoder(
+      input_dim=d_hidden,
+      hidden_dim=d_hidden,
+      projection_dim=d_hidden,
+      feedforward_hidden_dim=2 * d_hidden,
+      num_layers=1,
+      num_attention_heads=5
+    )
 
     self.steps = steps
     self.d_hidden = d_hidden
     self.sentence_nodes = sentence_nodes
-    self.embeddings = nn.Embedding(n_src_vocab, d_word)
     self.n_tgt_vocab = n_tgt_vocab
     self.n_intent = n_intent
-    self.slot_out = nn.Linear(d_hidden, n_tgt_vocab)
-    self.intent_out = nn.Linear(d_hidden, n_intent)
-    self.dropout = nn.Dropout(dropout)
-    #todo: summer: (), java
-    self.cell = SLSTMCell(d_word=d_word, d_hidden=d_hidden,
-                          n_windows=window_size,
-                          n_sent_nodes=sentence_nodes, bias=bias)
+
+    self._embeddings = nn.Embedding(n_src_vocab, d_word)
+    self._slot_out = nn.Linear(d_hidden, n_tgt_vocab)
+    self._intent_out = nn.Linear(d_hidden, n_intent)
+    self._dropout = nn.Dropout(dropout)
+    self._cell = SLSTMCell(
+      d_word=d_word,
+      d_hidden=d_hidden,
+      n_windows=window_size,
+      n_sent_nodes=sentence_nodes,
+      bias=bias
+    )
     self.sigmoid = nn.Sigmoid()
 
   def _get_conv(self, src):
@@ -299,9 +298,9 @@ class SLSTM(nn.Module):
     '''
     old = src
     src = src.transpose(0, 1).transpose(1, 2)  # (l,b,d) ->(b,l,d) ->(b,d,l)
-    conv1 = self.sw1(src)
-    conv3 = self.sw3(src)
-    conv33 = self.sw33(src)
+    conv1 = self._sw1(src)
+    conv3 = self._sw3(src)
+    conv33 = self._sw33(src)
     conv = torch.cat([conv1, conv3, conv33], dim=1)  # (b,3d,l)
     conv = self.filter_linear(conv.transpose(1, 2)).transpose(0, 1)
     # (b,3d,l)->(b,l,3d)-> (b,l,d) -> (l,b,d)
@@ -313,7 +312,7 @@ class SLSTM(nn.Module):
     src: (l,b,d)
     Returns: (l,b,d)
     '''
-    attn = self.multi_att(src, mask)
+    attn = self._multi_att(src, mask)
     attn += src
     return attn
 
@@ -325,8 +324,8 @@ class SLSTM(nn.Module):
     mask = src_seq.gt(pad_id)
 
     # word embedding
-    src_embs = self.embeddings(src_seq)
-    src_embs = self.dropout(src_embs)
+    src_embs = self._embeddings(src_seq)
+    src_embs = self._dropout(src_embs)
 
     if state is None:
       h_t = torch.zeros(
@@ -339,9 +338,9 @@ class SLSTM(nn.Module):
       c_t = state[1]
 
     for step in range(self.steps):
-      h_t, c_t = self.cell(src_embs, seq_mask, (h_t, c_t))
+      h_t, c_t = self._cell(src_embs, seq_mask, (h_t, c_t))
 
-    h_t = self.dropout(h_t)
+    h_t = self._dropout(h_t)
     h_w = h_t[:-self.sentence_nodes]  # (l,b,d)
     h_s = h_t[-self.sentence_nodes:]  # (1,b,d)
 
@@ -356,8 +355,7 @@ class SLSTM(nn.Module):
     attn_gate = self.sigmoid(attn)
     h_w *= attn_gate
 
-
-    slot_logit = self.slot_out(h_w) # (l,b,n_tgt)
-    sent_logit = self.intent_out(h_s)  # (1,b,n_intent)
+    slot_logit = self._slot_out(h_w) # (l,b,n_tgt)
+    sent_logit = self._intent_out(h_s)  # (1,b,n_intent)
 
     return slot_logit, sent_logit

@@ -1,7 +1,7 @@
 #coding: utf8
 
-from ver_1_roberta import *
-from ver_1_roberta.param import Param
+from ver_2_roberta import *
+from ver_2_roberta.param import Param
 from pytorch_transformers import RobertaTokenizer
 from pa_nlp.nlp import *
 
@@ -25,11 +25,12 @@ class LabelTokenizer:
       set(w for inst in label_insts for i, w in enumerate(inst) if i != 0)
     )
 
-    #todo: summer: (), java
-    tag2idx = {BOS_WORD: cls_id,
-               EOS_WORD: sep_id,
-               PAD_WORD: pad_id,
-               UNK_WORD: unk_id}
+    tag2idx = {
+      BOS_WORD: cls_id,
+      EOS_WORD: sep_id,
+      PAD_WORD: pad_id,
+      UNK_WORD: unk_id
+    }
     intent2idx = {UNK_WORD: unk_id}
 
     for i in full_intent:
